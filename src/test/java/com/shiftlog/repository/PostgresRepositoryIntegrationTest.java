@@ -73,13 +73,14 @@ class PostgresRepositoryIntegrationTest {
 
     @Test
     void storesShiftsAndJoinRowsInPostgres() {
-        Employee employee = employeeRepository.save(Employee.create("Ada", Role.MANAGER, BigDecimal.valueOf(31)));
+        Employee firstEmployee = employeeRepository.save(Employee.create("Ada", Role.MANAGER, BigDecimal.valueOf(31)));
+        Employee secondEmployee = employeeRepository.save(Employee.create("Grace", Role.COOK, BigDecimal.valueOf(28)));
         Shift saved = shiftRepository.save(Shift.create(
                 LocalDate.of(2026, 5, 27),
                 LocalTime.of(9, 0),
                 LocalTime.of(17, 0),
                 "Prep",
-                Set.of(employee.id())));
+                Set.of(firstEmployee.id())));
 
         assertThat(saved.id()).isNotBlank();
         assertThat(shiftRepository.existsById(saved.id())).isTrue();
@@ -92,9 +93,13 @@ class PostgresRepositoryIntegrationTest {
                 LocalTime.of(10, 0),
                 LocalTime.of(18, 0),
                 "Dinner",
-                Set.of(employee.id())));
+                Set.of(secondEmployee.id())));
 
-        assertThat(shiftRepository.findById(saved.id())).contains(updated);
+        assertThat(shiftRepository.findById(saved.id()))
+                .contains(updated)
+                .get()
+                .extracting(Shift::employeeIds)
+                .isEqualTo(Set.of(secondEmployee.id()));
 
         shiftRepository.deleteById(saved.id());
 

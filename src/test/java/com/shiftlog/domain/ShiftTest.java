@@ -54,6 +54,19 @@ class ShiftTest {
     }
 
     @Test
+    void trimsProvidedId() {
+        Shift shift = new Shift(
+                " shift-1 ",
+                LocalDate.of(2026, 5, 27),
+                LocalTime.of(10, 0),
+                LocalTime.of(18, 0),
+                "",
+                Set.of());
+
+        assertThat(shift.id()).isEqualTo("shift-1");
+    }
+
+    @Test
     void rejectsMissingDate() {
         assertThatThrownBy(() -> Shift.create(null, LocalTime.of(10, 0), LocalTime.of(18, 0), null, Set.of()))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -94,6 +107,18 @@ class ShiftTest {
                         LocalTime.of(18, 0),
                         null,
                         Set.of(" ")))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Employee ids cannot be blank");
+    }
+
+    @Test
+    void rejectsMissingEmployeeId() {
+        assertThatThrownBy(() -> Shift.create(
+                        LocalDate.of(2026, 5, 27),
+                        LocalTime.of(10, 0),
+                        LocalTime.of(18, 0),
+                        null,
+                        java.util.Collections.singleton(null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Employee ids cannot be blank");
     }

@@ -26,8 +26,22 @@ class EmployeeTest {
     }
 
     @Test
+    void trimsProvidedId() {
+        Employee employee = new Employee(" emp-1 ", "Ada", Role.WAITER, BigDecimal.TEN);
+
+        assertThat(employee.id()).isEqualTo("emp-1");
+    }
+
+    @Test
     void rejectsBlankName() {
         assertThatThrownBy(() -> Employee.create(" ", Role.WAITER, BigDecimal.TEN))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Employee name is required");
+    }
+
+    @Test
+    void rejectsMissingName() {
+        assertThatThrownBy(() -> Employee.create(null, Role.WAITER, BigDecimal.TEN))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Employee name is required");
     }

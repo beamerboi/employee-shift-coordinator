@@ -14,14 +14,21 @@
     <artifactId>shiftlog</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>ShiftLog</name>
-    <description>Restaurant staff and shift management backend</description>
+    <description>Employee and shift management application with Swing and REST interfaces</description>
 
     <properties>
         <java.version>17</java.version>
+        <maven.compiler.release>17</maven.compiler.release>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <testcontainers.version>1.20.6</testcontainers.version>
         <pitest.version>1.17.4</pitest.version>
         <pitest.junit5.version>1.2.1</pitest.junit5.version>
         <springdoc.version>2.6.0</springdoc.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <sonar.projectKey>beamerboi_employee-shift-coordinator</sonar.projectKey>
+        <sonar.organization>beamerboi</sonar.organization>
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 
@@ -100,12 +107,31 @@
                     <release>${java.version}</release>
                     <showWarnings>true</showWarnings>
                     <failOnWarning>true</failOnWarning>
+                    <compilerArgs>
+                        <arg>-Xlint:all</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <java.awt.headless>true</java.awt.headless>
+                        <shiftlog.gui.enabled>false</shiftlog.gui.enabled>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.12</version>
+                <configuration>
+                    <excludes>
+                        <exclude>com/shiftlog/ShiftLogApplication.class</exclude>
+                        <exclude>com/shiftlog/config/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <goals>
@@ -143,10 +169,6 @@
                                     </limits>
                                 </rule>
                             </rules>
-                            <excludes>
-                                <exclude>com.shiftlog.ShiftLogApplication</exclude>
-                                <exclude>com.shiftlog.config.*</exclude>
-                            </excludes>
                         </configuration>
                     </execution>
                 </executions>
@@ -164,14 +186,23 @@
                 </dependencies>
                 <configuration>
                     <targetClasses>
+                        <param>com.shiftlog.domain.*</param>
                         <param>com.shiftlog.service.*</param>
                     </targetClasses>
                     <targetTests>
+                        <param>com.shiftlog.domain.*Test</param>
                         <param>com.shiftlog.service.*Test</param>
                     </targetTests>
                     <mutationThreshold>100</mutationThreshold>
                     <coverageThreshold>100</coverageThreshold>
+                    <failWhenNoMutations>true</failWhenNoMutations>
+                    <threads>4</threads>
                     <timestampedReports>false</timestampedReports>
+                    <outputFormats>
+                        <param>HTML</param>
+                        <param>XML</param>
+                        <param>CSV</param>
+                    </outputFormats>
                 </configuration>
                 <executions>
                     <execution>
