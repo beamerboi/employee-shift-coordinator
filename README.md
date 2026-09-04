@@ -18,7 +18,7 @@ Install Java 17, Maven, and Docker. Docker must be running; PostgreSQL and Mongo
 mvn clean verify
 ```
 
-This runs unit, Swing GUI, service-backed GUI E2E, REST slice, and real-database integration tests; enforces JaCoCo line/branch coverage; and runs PIT mutation analysis. Reports are written below `target/site/jacoco` and `target/pit-reports`. To run PIT independently, use `mvn pitest:mutationCoverage`.
+This runs unit, Swing GUI, service-backed GUI E2E, REST slice, full REST-to-MongoDB E2E, and real-database integration tests; enforces JaCoCo line/branch coverage; and runs PIT mutation analysis. Reports are written below `target/site/jacoco` and `target/pit-reports`. To run PIT independently, use `mvn pitest:mutationCoverage`.
 
 ## Running the application
 
