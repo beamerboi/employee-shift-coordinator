@@ -73,6 +73,7 @@ public final class ShiftPanel extends SwingActionPanel {
             });
         }
         employeeBox.removeAllItems();
+        employeeBox.addItem(new EmployeeOption(null, "Select an employee"));
         for (Employee employee : employeeService.list()) {
             employeeBox.addItem(new EmployeeOption(employee.id(), employee.name() + " (" + employee.role() + ")"));
         }
@@ -89,6 +90,7 @@ public final class ShiftPanel extends SwingActionPanel {
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setDefaultEditor(Object.class, null);
         table.getSelectionModel().addListSelectionListener(event -> populateSelectedShift());
+        employeeBox.addActionListener(event -> updateSelectionState());
         updateButton.setName("shift-update");
         deleteButton.setName("shift-delete");
         assignButton.setName("shift-assign");
@@ -154,15 +156,20 @@ public final class ShiftPanel extends SwingActionPanel {
     }
 
     private void assignEmployee() {
-        EmployeeOption employee = (EmployeeOption) employeeBox.getSelectedItem();
+        EmployeeOption employee = selectedEmployee();
         shiftService.assignEmployee(selectedShift().id(), employee.id());
         refresh();
         clearForm();
     }
 
     private Set<String> selectedEmployeeIds() {
-        EmployeeOption employee = (EmployeeOption) employeeBox.getSelectedItem();
+        EmployeeOption employee = selectedEmployee();
         return employee == null ? Set.of() : Set.of(employee.id());
+    }
+
+    private EmployeeOption selectedEmployee() {
+        EmployeeOption employee = (EmployeeOption) employeeBox.getSelectedItem();
+        return employee == null || employee.id() == null ? null : employee;
     }
 
     private LocalDate selectedDate() {
@@ -217,7 +224,7 @@ public final class ShiftPanel extends SwingActionPanel {
         boolean selected = table.getSelectedRow() >= 0;
         updateButton.setEnabled(selected);
         deleteButton.setEnabled(selected);
-        assignButton.setEnabled(selected && employeeBox.getItemCount() > 0);
+        assignButton.setEnabled(selected && selectedEmployee() != null);
     }
 
     private void clearForm() {

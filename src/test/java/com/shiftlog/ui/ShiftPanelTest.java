@@ -85,20 +85,24 @@ class ShiftPanelTest {
 
     @Test
     void createsShiftWithSelectedEmployee() {
-        Employee employee = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
-        Shift saved = new Shift("shift-1", DATE, START, END, "Lunch", Set.of("emp-1"));
-        when(employeeService.list()).thenReturn(List.of(employee));
-        when(shiftService.create(DATE, START, END, "Lunch", Set.of("emp-1"))).thenReturn(saved);
+        Employee first = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
+        Employee second = new Employee("emp-2", "Grace", Role.COOK, BigDecimal.TEN);
+        Shift saved = new Shift("shift-1", DATE, START, END, "Lunch", Set.of("emp-2"));
+        when(employeeService.list()).thenReturn(List.of(first, second));
+        when(shiftService.create(DATE, START, END, "Lunch", Set.of("emp-2"))).thenReturn(saved);
         when(shiftService.list()).thenReturn(List.of(), List.of(saved));
         panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
 
         onEdt(() -> {
+            assertThat(employee().getSelectedItem().toString()).isEqualTo("Select an employee");
+            employee().setSelectedIndex(2);
             fillForm(DATE, START, END, "Lunch");
             button("shift-add").doClick();
 
-            assertThat(table().getValueAt(0, 4)).isEqualTo("emp-1");
+            assertThat(table().getValueAt(0, 4)).isEqualTo("emp-2");
+            assertThat(employee().getSelectedItem().toString()).isEqualTo("Select an employee");
         });
-        verify(shiftService).create(DATE, START, END, "Lunch", Set.of("emp-1"));
+        verify(shiftService).create(DATE, START, END, "Lunch", Set.of("emp-2"));
     }
 
     @Test
@@ -189,14 +193,36 @@ class ShiftPanelTest {
 
         onEdt(() -> {
             table().setRowSelectionInterval(0, 0);
-            assertThat(employee().getItemCount()).isOne();
-            assertThat(employee().getItemAt(0).toString()).isEqualTo("Ada (WAITER)");
+            assertThat(employee().getItemCount()).isEqualTo(2);
+            assertThat(employee().getItemAt(0).toString()).isEqualTo("Select an employee");
+            assertThat(employee().getItemAt(1).toString()).isEqualTo("Ada (WAITER)");
+            assertThat(button("shift-assign").isEnabled()).isFalse();
+            employee().setSelectedIndex(1);
             assertThat(button("shift-assign").isEnabled()).isTrue();
             button("shift-assign").doClick();
 
             assertThat(table().getValueAt(0, 4)).isEqualTo("emp-1");
         });
         verify(shiftService).assignEmployee("shift-1", "emp-1");
+    }
+
+    @Test
+    void disablesAssignmentWhenEmployeeOptionsAreCleared() {
+        Employee employee = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
+        Shift shift = new Shift("shift-1", DATE, START, END, "Lunch", Set.of());
+        when(employeeService.list()).thenReturn(List.of(employee));
+        when(shiftService.list()).thenReturn(List.of(shift));
+        panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
+
+        onEdt(() -> {
+            table().setRowSelectionInterval(0, 0);
+            employee().setSelectedIndex(1);
+            assertThat(button("shift-assign").isEnabled()).isTrue();
+
+            employee().removeAllItems();
+
+            assertThat(button("shift-assign").isEnabled()).isFalse();
+        });
     }
 
     @Test
@@ -211,6 +237,7 @@ class ShiftPanelTest {
 
         onEdt(() -> {
             table().setRowSelectionInterval(0, 0);
+            employee().setSelectedIndex(1);
             button("shift-assign").doClick();
             assertThat(error().getText()).isEqualTo("Database unavailable");
         });
