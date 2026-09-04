@@ -15,11 +15,15 @@ import com.shiftlog.service.ShiftService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
+import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import org.junit.jupiter.api.BeforeEach;
@@ -65,49 +69,57 @@ class ShiftPanelTest {
     @Test
     void createsShiftAndRefreshesTheTable() {
         Shift saved = new Shift("shift-1", DATE, START, END, "Lunch", Set.of());
-        when(shiftService.create(DATE, START, END, "Lunch")).thenReturn(saved);
+        when(shiftService.create(DATE, START, END, "Lunch", Set.of())).thenReturn(saved);
         when(shiftService.list()).thenReturn(List.of(saved));
 
         onEdt(() -> {
-            fillForm("2026-09-03", "09:00", "17:00", "Lunch");
+            fillForm(DATE, START, END, "Lunch");
             button("shift-add").doClick();
 
             assertThat(table().getRowCount()).isOne();
             assertThat(table().getValueAt(0, 0)).isEqualTo(DATE);
             assertThat(text("shift-notes").getText()).isEmpty();
         });
-        verify(shiftService).create(DATE, START, END, "Lunch");
+        verify(shiftService).create(DATE, START, END, "Lunch", Set.of());
     }
 
     @Test
-    void validatesDateAndTimeBeforeCallingService() {
+    void createsShiftWithSelectedEmployee() {
+        Employee employee = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
+        Shift saved = new Shift("shift-1", DATE, START, END, "Lunch", Set.of("emp-1"));
+        when(employeeService.list()).thenReturn(List.of(employee));
+        when(shiftService.create(DATE, START, END, "Lunch", Set.of("emp-1"))).thenReturn(saved);
+        when(shiftService.list()).thenReturn(List.of(), List.of(saved));
+        panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
+
         onEdt(() -> {
-            fillForm("03/09/2026", "morning", "17:00", "Lunch");
+            fillForm(DATE, START, END, "Lunch");
             button("shift-add").doClick();
 
-            assertThat(error().getText()).isEqualTo("Use date YYYY-MM-DD and time HH:mm");
+            assertThat(table().getValueAt(0, 4)).isEqualTo("emp-1");
         });
-        verify(shiftService, never()).create(DATE, START, END, "Lunch");
+        verify(shiftService).create(DATE, START, END, "Lunch", Set.of("emp-1"));
     }
 
     @Test
-    void validatesTimeWhenDateIsValid() {
+    void validatesPickerTextBeforeCallingService() {
         onEdt(() -> {
-            fillForm("2026-09-03", "morning", "17:00", "Lunch");
+            fillForm(DATE, START, END, "Lunch");
+            editor("shift-start").setText("morning");
             button("shift-add").doClick();
 
-            assertThat(error().getText()).isEqualTo("Use date YYYY-MM-DD and time HH:mm");
+            assertThat(error().getText()).isEqualTo("Choose a valid date and time");
         });
-        verify(shiftService, never()).create(DATE, START, END, "Lunch");
+        verify(shiftService, never()).create(DATE, START, END, "Lunch", Set.of());
     }
 
     @Test
     void presentsBusinessErrors() {
-        when(shiftService.create(DATE, END, START, "Invalid"))
+        when(shiftService.create(DATE, END, START, "Invalid", Set.of()))
                 .thenThrow(new IllegalArgumentException("Shift end time must be after start time"));
 
         onEdt(() -> {
-            fillForm("2026-09-03", "17:00", "09:00", "Invalid");
+            fillForm(DATE, END, START, "Invalid");
             button("shift-add").doClick();
 
             assertThat(error().getText()).isEqualTo("Shift end time must be after start time");
@@ -123,9 +135,9 @@ class ShiftPanelTest {
         onEdt(() -> {
             table().setRowSelectionInterval(0, 0);
 
-            assertThat(text("shift-date").getText()).isEqualTo("2026-09-03");
-            assertThat(text("shift-start").getText()).isEqualTo("09:00");
-            assertThat(text("shift-end").getText()).isEqualTo("17:00");
+            assertThat(date("shift-date")).isEqualTo(DATE);
+            assertThat(time("shift-start")).isEqualTo(START);
+            assertThat(time("shift-end")).isEqualTo(END);
             assertThat(text("shift-notes").getText()).isEqualTo("Lunch");
             assertThat(button("shift-update").isEnabled()).isTrue();
             assertThat(button("shift-delete").isEnabled()).isTrue();
@@ -143,7 +155,7 @@ class ShiftPanelTest {
 
         onEdt(() -> {
             table().setRowSelectionInterval(0, 0);
-            fillForm("2026-09-04", "09:00", "17:00", "Dinner");
+            fillForm(DATE.plusDays(1), START, END, "Dinner");
             button("shift-update").doClick();
 
             assertThat(table().getValueAt(0, 0)).isEqualTo(DATE.plusDays(1));
@@ -204,11 +216,37 @@ class ShiftPanelTest {
         });
     }
 
-    private void fillForm(String date, String start, String end, String notes) {
-        text("shift-date").setText(date);
-        text("shift-start").setText(start);
-        text("shift-end").setText(end);
+    private void fillForm(LocalDate date, LocalTime start, LocalTime end, String notes) {
+        spinner("shift-date").setValue(toDate(date, LocalTime.MIDNIGHT));
+        spinner("shift-start").setValue(toDate(date, start));
+        spinner("shift-end").setValue(toDate(date, end));
         text("shift-notes").setText(notes);
+    }
+
+    private LocalDate date(String name) {
+        return value(name).toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    private LocalTime time(String name) {
+        return value(name).toInstant().atZone(ZoneId.systemDefault()).toLocalTime()
+                .withSecond(0)
+                .withNano(0);
+    }
+
+    private Date value(String name) {
+        return (Date) spinner(name).getValue();
+    }
+
+    private JSpinner spinner(String name) {
+        return component(panel, name, JSpinner.class);
+    }
+
+    private JFormattedTextField editor(String name) {
+        return ((JSpinner.DefaultEditor) spinner(name).getEditor()).getTextField();
+    }
+
+    private static Date toDate(LocalDate date, LocalTime time) {
+        return Date.from(date.atTime(time).atZone(ZoneId.systemDefault()).toInstant());
     }
 
     private JTable table() {

@@ -49,6 +49,31 @@ class ShiftServiceTest {
     }
 
     @Test
+    void createsShiftWithExistingEmployees() {
+        Shift unsaved = Shift.create(DATE, START, END, "Lunch", Set.of("emp-1"));
+        Shift saved = unsaved.withId("shift-1");
+        when(employeeRepository.existsById("emp-1")).thenReturn(true);
+        when(shiftRepository.save(unsaved)).thenReturn(saved);
+
+        Shift result = shiftService.create(DATE, START, END, "Lunch", Set.of("emp-1"));
+
+        assertThat(result).isEqualTo(saved);
+        verify(employeeRepository).existsById("emp-1");
+        verify(shiftRepository).save(unsaved);
+    }
+
+    @Test
+    void refusesToCreateShiftWithMissingEmployee() {
+        when(employeeRepository.existsById("missing")).thenReturn(false);
+
+        assertThatThrownBy(() -> shiftService.create(DATE, START, END, "Lunch", Set.of("missing")))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("Employee missing was not found");
+        verify(employeeRepository).existsById("missing");
+        verifyNoMoreInteractions(employeeRepository, shiftRepository);
+    }
+
+    @Test
     void returnsShiftById() {
         Shift shift = Shift.create(DATE, START, END, "", Set.of()).withId("shift-1");
         when(shiftRepository.findById("shift-1")).thenReturn(Optional.of(shift));

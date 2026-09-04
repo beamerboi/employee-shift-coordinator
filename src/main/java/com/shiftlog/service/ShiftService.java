@@ -21,7 +21,18 @@ public class ShiftService {
     }
 
     public Shift create(LocalDate date, LocalTime startTime, LocalTime endTime, String notes) {
-        return shiftRepository.save(Shift.create(date, startTime, endTime, notes, Set.of()));
+        return create(date, startTime, endTime, notes, Set.of());
+    }
+
+    public Shift create(
+            LocalDate date,
+            LocalTime startTime,
+            LocalTime endTime,
+            String notes,
+            Set<String> employeeIds) {
+        Shift shift = Shift.create(date, startTime, endTime, notes, employeeIds);
+        ensureEmployeesExist(shift.employeeIds());
+        return shiftRepository.save(shift);
     }
 
     public Shift get(String id) {

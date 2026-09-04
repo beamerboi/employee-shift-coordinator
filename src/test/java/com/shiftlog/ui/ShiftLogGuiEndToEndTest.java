@@ -12,6 +12,10 @@ import com.shiftlog.repository.ShiftRepository;
 import com.shiftlog.service.EmployeeService;
 import com.shiftlog.service.ShiftService;
 import java.util.ArrayList;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +23,7 @@ import java.util.Optional;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JTabbedPane;
+import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,15 +75,14 @@ class ShiftLogGuiEndToEndTest {
             button("employee-add").doClick();
             component(panel, "main-tabs", JTabbedPane.class).setSelectedIndex(1);
 
-            text("shift-date").setText("2026-09-03");
-            text("shift-start").setText("09:00");
-            text("shift-end").setText("17:00");
+            LocalDate date = LocalDate.of(2026, 9, 3);
+            spinner("shift-date").setValue(toDate(date, LocalTime.MIDNIGHT));
+            spinner("shift-start").setValue(toDate(date, LocalTime.of(9, 0)));
+            spinner("shift-end").setValue(toDate(date, LocalTime.of(17, 0)));
             text("shift-notes").setText("Lunch");
             button("shift-add").doClick();
 
             JTable table = table("shift-table");
-            table.setRowSelectionInterval(0, 0);
-            button("shift-assign").doClick();
             assertThat(table.getValueAt(0, 4)).isEqualTo("employee-1");
 
             table.setRowSelectionInterval(0, 0);
@@ -101,6 +105,14 @@ class ShiftLogGuiEndToEndTest {
 
     private JButton button(String name) {
         return component(panel, name, JButton.class);
+    }
+
+    private JSpinner spinner(String name) {
+        return component(panel, name, JSpinner.class);
+    }
+
+    private static Date toDate(LocalDate date, LocalTime time) {
+        return Date.from(date.atTime(time).atZone(ZoneId.systemDefault()).toInstant());
     }
 
     private JTable table(String name) {

@@ -36,4 +36,4 @@ MongoDB uses `MONGODB_URI` (default `mongodb://localhost:27017/shiftlog`). Postg
 
 For Eclipse, import the repository with **File → Import → Existing Maven Projects**, select Java 17, and update the Maven project if prompted. Committed Eclipse metadata provides consistent source folders and compiler settings.
 
-Coveralls requires the `COVERALLS_REPO_TOKEN` GitHub secret. SonarCloud requires `SONAR_TOKEN`; its project key and organization are non-secret Maven properties.
+Coveralls uploads the JaCoCo report through its official GitHub Action using GitHub's automatically provided token. SonarCloud requires the `SONAR_TOKEN` GitHub secret; its project key and organization are non-secret Maven properties.

@@ -17,7 +17,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     env:
-      COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
@@ -34,8 +33,11 @@ jobs:
         run: mvn -B clean verify
 
       - name: Coveralls
-        if: github.event_name == 'push' && env.COVERALLS_REPO_TOKEN != ''
-        run: mvn -B coveralls:report
+        if: github.event_name == 'push'
+        uses: coverallsapp/github-action@v2
+        with:
+          file: target/site/jacoco/jacoco.xml
+          format: jacoco
 
       - name: SonarCloud
         if: github.event_name == 'push' && env.SONAR_TOKEN != ''
