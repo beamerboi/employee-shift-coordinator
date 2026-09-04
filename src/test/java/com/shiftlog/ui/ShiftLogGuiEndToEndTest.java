@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Optional;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JList;
 import javax.swing.JTabbedPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
@@ -70,6 +71,10 @@ class ShiftLogGuiEndToEndTest {
     @Test
     void createsShiftAssignsEmployeeEditsAndDeletesThroughGui() {
         onEdt(() -> {
+            text("employee-name").setText("Ada");
+            text("employee-rate").setText("30");
+            button("employee-add").doClick();
+
             text("employee-name").setText("Grace");
             text("employee-rate").setText("25");
             button("employee-add").doClick();
@@ -80,16 +85,19 @@ class ShiftLogGuiEndToEndTest {
             spinner("shift-start").setValue(toDate(date, LocalTime.of(9, 0)));
             spinner("shift-end").setValue(toDate(date, LocalTime.of(17, 0)));
             text("shift-notes").setText("Lunch");
-            combo("shift-employee").setSelectedIndex(1);
+            employees().setSelectedIndices(new int[] {0, 1});
             button("shift-add").doClick();
 
             JTable table = table("shift-table");
-            assertThat(table.getValueAt(0, 4)).isEqualTo("Grace");
+            assertThat(table.getValueAt(0, 4).toString()).contains("Ada", "Grace");
 
             table.setRowSelectionInterval(0, 0);
+            assertThat(employees().getSelectedValuesList()).hasSize(2);
+            employees().setSelectedIndex(1);
             text("shift-notes").setText("Dinner");
             button("shift-update").doClick();
             assertThat(table.getValueAt(0, 3)).isEqualTo("Dinner");
+            assertThat(table.getValueAt(0, 4)).isEqualTo("Grace");
 
             table.setRowSelectionInterval(0, 0);
             button("shift-delete").doClick();
@@ -97,7 +105,7 @@ class ShiftLogGuiEndToEndTest {
         });
 
         assertThat(shiftService.list()).isEmpty();
-        assertThat(employeeService.list()).hasSize(1);
+        assertThat(employeeService.list()).hasSize(2);
     }
 
     private JTextField text(String name) {
@@ -110,6 +118,11 @@ class ShiftLogGuiEndToEndTest {
 
     private JSpinner spinner(String name) {
         return component(panel, name, JSpinner.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private JList<Object> employees() {
+        return component(panel, "shift-employees", JList.class);
     }
 
     private static Date toDate(LocalDate date, LocalTime time) {

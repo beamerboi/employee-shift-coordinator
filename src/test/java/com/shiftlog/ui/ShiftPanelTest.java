@@ -20,9 +20,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
@@ -61,7 +61,7 @@ class ShiftPanelTest {
             assertThat(table().getRowCount()).isZero();
             assertThat(button("shift-update").isEnabled()).isFalse();
             assertThat(button("shift-delete").isEnabled()).isFalse();
-            assertThat(button("shift-assign").isEnabled()).isFalse();
+            assertThat(employees().isSelectionEmpty()).isTrue();
             assertThat(error().isVisible()).isFalse();
         });
     }
@@ -84,25 +84,24 @@ class ShiftPanelTest {
     }
 
     @Test
-    void createsShiftWithSelectedEmployee() {
+    void createsShiftWithMultipleSelectedEmployees() {
         Employee first = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
         Employee second = new Employee("emp-2", "Grace", Role.COOK, BigDecimal.TEN);
-        Shift saved = new Shift("shift-1", DATE, START, END, "Lunch", Set.of("emp-2"));
+        Shift saved = new Shift("shift-1", DATE, START, END, "Lunch", Set.of("emp-1", "emp-2"));
         when(employeeService.list()).thenReturn(List.of(first, second));
-        when(shiftService.create(DATE, START, END, "Lunch", Set.of("emp-2"))).thenReturn(saved);
+        when(shiftService.create(DATE, START, END, "Lunch", Set.of("emp-1", "emp-2"))).thenReturn(saved);
         when(shiftService.list()).thenReturn(List.of(), List.of(saved));
         panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
 
         onEdt(() -> {
-            assertThat(employee().getSelectedItem().toString()).isEqualTo("Select an employee");
-            employee().setSelectedIndex(2);
+            employees().setSelectedIndices(new int[] {0, 1});
             fillForm(DATE, START, END, "Lunch");
             button("shift-add").doClick();
 
-            assertThat(table().getValueAt(0, 4)).isEqualTo("Grace");
-            assertThat(employee().getSelectedItem().toString()).isEqualTo("Select an employee");
+            assertThat(table().getValueAt(0, 4).toString()).contains("Ada", "Grace");
+            assertThat(employees().isSelectionEmpty()).isTrue();
         });
-        verify(shiftService).create(DATE, START, END, "Lunch", Set.of("emp-2"));
+        verify(shiftService).create(DATE, START, END, "Lunch", Set.of("emp-1", "emp-2"));
     }
 
     @Test
@@ -149,22 +148,31 @@ class ShiftPanelTest {
     }
 
     @Test
-    void editsSelectedShiftWithoutLosingAssignments() {
-        Shift shift = new Shift("shift-1", DATE, START, END, "Lunch", Set.of("emp-1"));
-        Shift updated = new Shift("shift-1", DATE.plusDays(1), START, END, "Dinner", Set.of("emp-1"));
+    void restoresPreviousAssignmentsAndUpdatesTheSelection() {
+        Employee first = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
+        Employee second = new Employee("emp-2", "Grace", Role.COOK, BigDecimal.TEN);
+        Employee third = new Employee("emp-3", "Linus", Role.MANAGER, BigDecimal.TEN);
+        Shift shift = new Shift("shift-1", DATE, START, END, "Lunch", Set.of("emp-1", "emp-2"));
+        Shift updated = new Shift("shift-1", DATE.plusDays(1), START, END, "Dinner", Set.of("emp-2"));
+        when(employeeService.list()).thenReturn(List.of(first, second, third));
         when(shiftService.list()).thenReturn(List.of(shift), List.of(updated));
-        when(shiftService.update("shift-1", DATE.plusDays(1), START, END, "Dinner", Set.of("emp-1")))
+        when(shiftService.update("shift-1", DATE.plusDays(1), START, END, "Dinner", Set.of("emp-2")))
                 .thenReturn(updated);
         panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
 
         onEdt(() -> {
             table().setRowSelectionInterval(0, 0);
+            assertThat(employees().getSelectedValuesList())
+                    .extracting(Object::toString)
+                    .containsExactly("Ada (WAITER)", "Grace (COOK)");
+            employees().setSelectedIndex(1);
             fillForm(DATE.plusDays(1), START, END, "Dinner");
             button("shift-update").doClick();
 
             assertThat(table().getValueAt(0, 0)).isEqualTo(DATE.plusDays(1));
+            assertThat(table().getValueAt(0, 4)).isEqualTo("Grace");
         });
-        verify(shiftService).update("shift-1", DATE.plusDays(1), START, END, "Dinner", Set.of("emp-1"));
+        verify(shiftService).update("shift-1", DATE.plusDays(1), START, END, "Dinner", Set.of("emp-2"));
     }
 
     @Test
@@ -179,68 +187,6 @@ class ShiftPanelTest {
             assertThat(table().getRowCount()).isZero();
         });
         verify(shiftService).delete("shift-1");
-    }
-
-    @Test
-    void assignsSelectedEmployeeToSelectedShift() {
-        Employee employee = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
-        Shift shift = new Shift("shift-1", DATE, START, END, "Lunch", Set.of());
-        Shift assigned = shift.assignEmployee("emp-1");
-        when(employeeService.list()).thenReturn(List.of(employee));
-        when(shiftService.list()).thenReturn(List.of(shift), List.of(assigned));
-        when(shiftService.assignEmployee("shift-1", "emp-1")).thenReturn(assigned);
-        panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
-
-        onEdt(() -> {
-            table().setRowSelectionInterval(0, 0);
-            assertThat(employee().getItemCount()).isEqualTo(2);
-            assertThat(employee().getItemAt(0).toString()).isEqualTo("Select an employee");
-            assertThat(employee().getItemAt(1).toString()).isEqualTo("Ada (WAITER)");
-            assertThat(button("shift-assign").isEnabled()).isFalse();
-            employee().setSelectedIndex(1);
-            assertThat(button("shift-assign").isEnabled()).isTrue();
-            button("shift-assign").doClick();
-
-            assertThat(table().getValueAt(0, 4)).isEqualTo("Ada");
-        });
-        verify(shiftService).assignEmployee("shift-1", "emp-1");
-    }
-
-    @Test
-    void disablesAssignmentWhenEmployeeOptionsAreCleared() {
-        Employee employee = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
-        Shift shift = new Shift("shift-1", DATE, START, END, "Lunch", Set.of());
-        when(employeeService.list()).thenReturn(List.of(employee));
-        when(shiftService.list()).thenReturn(List.of(shift));
-        panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
-
-        onEdt(() -> {
-            table().setRowSelectionInterval(0, 0);
-            employee().setSelectedIndex(1);
-            assertThat(button("shift-assign").isEnabled()).isTrue();
-
-            employee().removeAllItems();
-
-            assertThat(button("shift-assign").isEnabled()).isFalse();
-        });
-    }
-
-    @Test
-    void presentsAssignmentErrors() {
-        Employee employee = new Employee("emp-1", "Ada", Role.WAITER, BigDecimal.TEN);
-        Shift shift = new Shift("shift-1", DATE, START, END, "Lunch", Set.of());
-        when(employeeService.list()).thenReturn(List.of(employee));
-        when(shiftService.list()).thenReturn(List.of(shift));
-        when(shiftService.assignEmployee("shift-1", "emp-1"))
-                .thenThrow(new IllegalStateException("Database unavailable"));
-        panel = onEdt(() -> new ShiftPanel(shiftService, employeeService));
-
-        onEdt(() -> {
-            table().setRowSelectionInterval(0, 0);
-            employee().setSelectedIndex(1);
-            button("shift-assign").doClick();
-            assertThat(error().getText()).isEqualTo("Database unavailable");
-        });
     }
 
     private void fillForm(LocalDate date, LocalTime start, LocalTime end, String notes) {
@@ -289,8 +235,8 @@ class ShiftPanelTest {
     }
 
     @SuppressWarnings("unchecked")
-    private JComboBox<Object> employee() {
-        return component(panel, "shift-employee", JComboBox.class);
+    private JList<Object> employees() {
+        return component(panel, "shift-employees", JList.class);
     }
 
     private JLabel error() {
