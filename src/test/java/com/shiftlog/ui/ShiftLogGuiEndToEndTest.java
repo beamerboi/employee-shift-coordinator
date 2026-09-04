@@ -80,6 +80,7 @@ class ShiftLogGuiEndToEndTest {
             spinner("shift-start").setValue(toDate(date, LocalTime.of(9, 0)));
             spinner("shift-end").setValue(toDate(date, LocalTime.of(17, 0)));
             text("shift-notes").setText("Lunch");
+            combo("shift-employee").setSelectedIndex(1);
             button("shift-add").doClick();
 
             JTable table = table("shift-table");
