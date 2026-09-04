@@ -30,6 +30,12 @@ public class ShiftController {
         this.shiftService = shiftService;
     }
 
+    /**
+     * Creates a new shift with the specified date, time range, notes, and assigned employees.
+     *
+     * @param request the shift creation request containing date, start/end times, notes, and employee IDs
+     * @return the newly created shift
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a shift")
