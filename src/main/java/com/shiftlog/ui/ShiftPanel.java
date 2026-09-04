@@ -14,7 +14,9 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -30,7 +32,7 @@ import javax.swing.table.DefaultTableModel;
 public final class ShiftPanel extends SwingActionPanel {
 
     private static final long serialVersionUID = 1L;
-    private static final String[] COLUMNS = {"Date", "Start", "End", "Notes", "Employee ids"};
+    private static final String[] COLUMNS = {"Date", "Start", "End", "Notes", "Employees"};
     private static final LocalTime DEFAULT_START = LocalTime.of(9, 0);
     private static final LocalTime DEFAULT_END = LocalTime.of(17, 0);
 
@@ -61,6 +63,9 @@ public final class ShiftPanel extends SwingActionPanel {
     }
 
     public void refresh() {
+        List<Employee> employees = employeeService.list();
+        Map<String, String> employeeNamesById = employees.stream()
+                .collect(Collectors.toMap(Employee::id, Employee::name));
         shifts = new ArrayList<>(shiftService.list());
         tableModel.setRowCount(0);
         for (Shift shift : shifts) {
@@ -69,15 +74,21 @@ public final class ShiftPanel extends SwingActionPanel {
                     shift.startTime(),
                     shift.endTime(),
                     shift.notes(),
-                    String.join(", ", shift.employeeIds())
+                    employeeNames(shift, employeeNamesById)
             });
         }
         employeeBox.removeAllItems();
         employeeBox.addItem(new EmployeeOption(null, "Select an employee"));
-        for (Employee employee : employeeService.list()) {
+        for (Employee employee : employees) {
             employeeBox.addItem(new EmployeeOption(employee.id(), employee.name() + " (" + employee.role() + ")"));
         }
         updateSelectionState();
+    }
+
+    private static String employeeNames(Shift shift, Map<String, String> employeeNamesById) {
+        return shift.employeeIds().stream()
+                .map(id -> employeeNamesById.getOrDefault(id, id))
+                .collect(Collectors.joining(", "));
     }
 
     private void configureComponents() {

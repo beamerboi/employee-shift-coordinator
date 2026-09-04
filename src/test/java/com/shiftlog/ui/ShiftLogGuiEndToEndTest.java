@@ -84,7 +84,7 @@ class ShiftLogGuiEndToEndTest {
             button("shift-add").doClick();
 
             JTable table = table("shift-table");
-            assertThat(table.getValueAt(0, 4)).isEqualTo("employee-1");
+            assertThat(table.getValueAt(0, 4)).isEqualTo("Grace");
 
             table.setRowSelectionInterval(0, 0);
             text("shift-notes").setText("Dinner");
