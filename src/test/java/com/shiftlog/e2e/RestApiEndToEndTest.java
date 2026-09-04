@@ -38,6 +38,11 @@ class RestApiEndToEndTest {
     @Container
     static final MongoDBContainer MONGO = new MongoDBContainer(DockerImageName.parse("mongo:7.0"));
 
+    /**
+     * Configures Spring Boot to use the Testcontainers MongoDB instance for this test.
+     *
+     * @param registry the dynamic property registry to register MongoDB connection properties
+     */
     @DynamicPropertySource
     static void mongoProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", MONGO::getReplicaSetUrl);
@@ -49,11 +54,17 @@ class RestApiEndToEndTest {
     @Autowired
     private MongoTemplate mongoTemplate;
 
+    /**
+     * Drops the MongoDB database before each test to ensure a clean state.
+     */
     @BeforeEach
     void cleanDatabase() {
         mongoTemplate.getDb().drop();
     }
 
+    /**
+     * Verifies end-to-end CRUD operations for employees and shifts, including creation, retrieval, update, assignment, and deletion.
+     */
     @Test
     void managesAnEmployeeAndAssignedShiftThroughTheRunningApplication() {
         Employee employee = createEmployee();
@@ -108,6 +119,11 @@ class RestApiEndToEndTest {
         assertThat(mongoTemplate.getCollection("shifts").countDocuments()).isZero();
     }
 
+    /**
+     * Creates a test employee via the REST API and returns the created employee.
+     *
+     * @return the created employee
+     */
     private Employee createEmployee() {
         EmployeeRequest request = new EmployeeRequest("Ada", Role.MANAGER, new BigDecimal("31.00"));
         ResponseEntity<Employee> response = rest.postForEntity("/employees", request, Employee.class);
@@ -118,6 +134,12 @@ class RestApiEndToEndTest {
         return response.getBody();
     }
 
+    /**
+     * Creates a test shift with an assigned employee via the REST API and returns the created shift.
+     *
+     * @param employeeId the ID of the employee to assign to the shift
+     * @return the created shift with the employee assigned
+     */
     private Shift createAssignedShift(String employeeId) {
         ShiftRequest request = new ShiftRequest(
                 LocalDate.of(2026, 9, 5),

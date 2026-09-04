@@ -32,6 +32,9 @@ class ShiftControllerTest {
     @MockBean
     private ShiftService shiftService;
 
+    /**
+     * Verifies that a valid shift creation request returns HTTP 201 and creates a shift with the specified employee IDs.
+     */
     @Test
     void createsShift() throws Exception {
         Shift shift = new Shift("shift-1", LocalDate.of(2026, 5, 27), LocalTime.of(9, 0), LocalTime.of(17, 0), "Prep", Set.of("emp-1"));
