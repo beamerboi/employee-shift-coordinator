@@ -34,18 +34,24 @@ class ShiftControllerTest {
 
     @Test
     void createsShift() throws Exception {
-        Shift shift = new Shift("shift-1", LocalDate.of(2026, 5, 27), LocalTime.of(9, 0), LocalTime.of(17, 0), "Prep", Set.of());
-        when(shiftService.create(LocalDate.of(2026, 5, 27), LocalTime.of(9, 0), LocalTime.of(17, 0), "Prep"))
+        Shift shift = new Shift("shift-1", LocalDate.of(2026, 5, 27), LocalTime.of(9, 0), LocalTime.of(17, 0), "Prep", Set.of("emp-1"));
+        when(shiftService.create(
+                LocalDate.of(2026, 5, 27),
+                LocalTime.of(9, 0),
+                LocalTime.of(17, 0),
+                "Prep",
+                Set.of("emp-1")))
                 .thenReturn(shift);
 
         mockMvc.perform(post("/shifts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"date":"2026-05-27","startTime":"09:00:00","endTime":"17:00:00","notes":"Prep"}
+                                {"date":"2026-05-27","startTime":"09:00:00","endTime":"17:00:00","notes":"Prep","employeeIds":["emp-1"]}
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value("shift-1"))
-                .andExpect(jsonPath("$.date").value("2026-05-27"));
+                .andExpect(jsonPath("$.date").value("2026-05-27"))
+                .andExpect(jsonPath("$.employeeIds[0]").value("emp-1"));
     }
 
     @Test

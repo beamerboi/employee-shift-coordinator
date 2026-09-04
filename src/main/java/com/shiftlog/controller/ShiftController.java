@@ -38,7 +38,12 @@ public class ShiftController {
             @ApiResponse(responseCode = "400", description = "Invalid shift request")
     })
     public Shift create(@Valid @RequestBody ShiftRequest request) {
-        return shiftService.create(request.date(), request.startTime(), request.endTime(), request.notes());
+        return shiftService.create(
+                request.date(),
+                request.startTime(),
+                request.endTime(),
+                request.notes(),
+                request.normalizedEmployeeIds());
     }
 
     @GetMapping("/{id}")
