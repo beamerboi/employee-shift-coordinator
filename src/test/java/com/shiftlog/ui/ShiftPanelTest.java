@@ -99,7 +99,7 @@ class ShiftPanelTest {
             fillForm(DATE, START, END, "Lunch");
             button("shift-add").doClick();
 
-            assertThat(table().getValueAt(0, 4)).isEqualTo("emp-2");
+            assertThat(table().getValueAt(0, 4)).isEqualTo("Grace");
             assertThat(employee().getSelectedItem().toString()).isEqualTo("Select an employee");
         });
         verify(shiftService).create(DATE, START, END, "Lunch", Set.of("emp-2"));
@@ -201,7 +201,7 @@ class ShiftPanelTest {
             assertThat(button("shift-assign").isEnabled()).isTrue();
             button("shift-assign").doClick();
 
-            assertThat(table().getValueAt(0, 4)).isEqualTo("emp-1");
+            assertThat(table().getValueAt(0, 4)).isEqualTo("Ada");
         });
         verify(shiftService).assignEmployee("shift-1", "emp-1");
     }
