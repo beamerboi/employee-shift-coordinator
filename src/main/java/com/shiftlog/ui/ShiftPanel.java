@@ -17,9 +17,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import javax.swing.JButton;
-import javax.swing.JComboBox;
+import javax.swing.DefaultListModel;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
@@ -42,12 +44,12 @@ public final class ShiftPanel extends SwingActionPanel {
     private final JSpinner startPicker = createTimePicker(DEFAULT_START);
     private final JSpinner endPicker = createTimePicker(DEFAULT_END);
     private final JTextField notesField = new JTextField(16);
-    private final JComboBox<EmployeeOption> employeeBox = new JComboBox<>();
+    private final DefaultListModel<EmployeeOption> employeeModel = new DefaultListModel<>();
+    private final JList<EmployeeOption> employeeList = new JList<>(employeeModel);
     private final DefaultTableModel tableModel = new DefaultTableModel(COLUMNS, 0);
     private final JTable table = new JTable(tableModel);
     private final JButton updateButton = new JButton("Update");
     private final JButton deleteButton = new JButton("Delete");
-    private final JButton assignButton = new JButton("Assign employee");
     private List<Shift> shifts = new ArrayList<>();
 
     public ShiftPanel(ShiftService shiftService, EmployeeService employeeService) {
@@ -77,11 +79,11 @@ public final class ShiftPanel extends SwingActionPanel {
                     employeeNames(shift, employeeNamesById)
             });
         }
-        employeeBox.removeAllItems();
-        employeeBox.addItem(new EmployeeOption(null, "Select an employee"));
+        employeeModel.clear();
         for (Employee employee : employees) {
-            employeeBox.addItem(new EmployeeOption(employee.id(), employee.name() + " (" + employee.role() + ")"));
+            employeeModel.addElement(new EmployeeOption(employee.id(), employee.name() + " (" + employee.role() + ")"));
         }
+        employeeList.clearSelection();
         updateSelectionState();
     }
 
@@ -96,15 +98,15 @@ public final class ShiftPanel extends SwingActionPanel {
         startPicker.setName("shift-start");
         endPicker.setName("shift-end");
         notesField.setName("shift-notes");
-        employeeBox.setName("shift-employee");
+        employeeList.setName("shift-employees");
+        employeeList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        employeeList.setVisibleRowCount(3);
         table.setName("shift-table");
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         table.setDefaultEditor(Object.class, null);
         table.getSelectionModel().addListSelectionListener(event -> populateSelectedShift());
-        employeeBox.addActionListener(event -> updateSelectionState());
         updateButton.setName("shift-update");
         deleteButton.setName("shift-delete");
-        assignButton.setName("shift-assign");
     }
 
     private JPanel createForm() {
@@ -131,10 +133,8 @@ public final class ShiftPanel extends SwingActionPanel {
     private JPanel createAssignmentArea() {
         JPanel assignment = new JPanel(new BorderLayout(8, 4));
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        assignButton.addActionListener(event -> runAction(this::assignEmployee));
-        controls.add(new JLabel("Employee (assigned automatically on Create)"));
-        controls.add(employeeBox);
-        controls.add(assignButton);
+        controls.add(new JLabel("Employees (Ctrl/Shift-click for multiple; saved on Create/Update)"));
+        controls.add(new JScrollPane(employeeList));
         assignment.add(controls, BorderLayout.NORTH);
         assignment.add(errorLabel(), BorderLayout.SOUTH);
         return assignment;
@@ -155,7 +155,7 @@ public final class ShiftPanel extends SwingActionPanel {
                 selectedStart(),
                 selectedEnd(),
                 notesField.getText(),
-                selected.employeeIds());
+                selectedEmployeeIds());
         refresh();
         clearForm();
     }
@@ -166,21 +166,10 @@ public final class ShiftPanel extends SwingActionPanel {
         clearForm();
     }
 
-    private void assignEmployee() {
-        EmployeeOption employee = selectedEmployee();
-        shiftService.assignEmployee(selectedShift().id(), employee.id());
-        refresh();
-        clearForm();
-    }
-
     private Set<String> selectedEmployeeIds() {
-        EmployeeOption employee = selectedEmployee();
-        return employee == null ? Set.of() : Set.of(employee.id());
-    }
-
-    private EmployeeOption selectedEmployee() {
-        EmployeeOption employee = (EmployeeOption) employeeBox.getSelectedItem();
-        return employee == null || employee.id() == null ? null : employee;
+        return employeeList.getSelectedValuesList().stream()
+                .map(EmployeeOption::id)
+                .collect(Collectors.toSet());
     }
 
     private LocalDate selectedDate() {
@@ -227,15 +216,22 @@ public final class ShiftPanel extends SwingActionPanel {
             startPicker.setValue(toDate(shift.date(), shift.startTime()));
             endPicker.setValue(toDate(shift.date(), shift.endTime()));
             notesField.setText(shift.notes());
+            selectEmployees(shift.employeeIds());
         }
         updateSelectionState();
+    }
+
+    private void selectEmployees(Set<String> employeeIds) {
+        int[] selectedIndices = IntStream.range(0, employeeModel.size())
+                .filter(index -> employeeIds.contains(employeeModel.get(index).id()))
+                .toArray();
+        employeeList.setSelectedIndices(selectedIndices);
     }
 
     private void updateSelectionState() {
         boolean selected = table.getSelectedRow() >= 0;
         updateButton.setEnabled(selected);
         deleteButton.setEnabled(selected);
-        assignButton.setEnabled(selected && selectedEmployee() != null);
     }
 
     private void clearForm() {
@@ -245,6 +241,7 @@ public final class ShiftPanel extends SwingActionPanel {
         startPicker.setValue(toDate(today, DEFAULT_START));
         endPicker.setValue(toDate(today, DEFAULT_END));
         notesField.setText("");
+        employeeList.clearSelection();
         clearError();
         updateSelectionState();
     }
